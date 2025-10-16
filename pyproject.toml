@@ -23,6 +23,7 @@ dependencies = [
     "celery[redis]>=5.5.3",
     "torch>=2.8.0",
     "numpy>=2.3.0",
+    "matplotlib>=3.10.7",
 ]
 
 [dependency-groups]

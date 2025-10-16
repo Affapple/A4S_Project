@@ -54,7 +54,6 @@ def make_torch_model(model: torch.nn.Module) -> FunctionalModel:
     def predict_proba(x: Array) -> Array:
         if isinstance(x, np.ndarray):
             x = torch.tensor(x).float()
-            torch.tensor(x).float()
         with torch.no_grad():
             return model(x).detach().numpy()
 

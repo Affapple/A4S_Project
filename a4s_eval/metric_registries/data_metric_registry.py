@@ -9,7 +9,10 @@ logger = get_logger()
 
 class DataMetric(Protocol):
     def __call__(
-        self, datashape: DataShape, reference: Dataset, evaluated: Dataset
+        self, 
+        datashape: DataShape,
+        reference: Dataset,
+        evaluated: Dataset
     ) -> list[Measure]:
         """Run a specific data evaluation.
 
