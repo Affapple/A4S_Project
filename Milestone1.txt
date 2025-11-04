@@ -1,0 +1,36 @@
+Repository:
+https://github.com/Affapple/A4S_Project
+
+1. Metric to be implemented:
+The metric to be implemented is "Shapley Additive Explanations" (SHAP), a game theoretical method used to address the interpretability of machine learning models.
+
+SHAP values help explaining the contribution of each feature to the prediction made by a model, allowing developers to understand how different features impact the model's output. 
+
+This is useful in scenarios where interpretability is crucial, such as in healthcare or finance, however it could be applied in cybersecurity as well to understand how the model failed to be robust against adversarial attacks.
+
+2. Class of models the metric applies to:
+The SHAP metric can be applied to a wide range of machine learning models, including but not limited to:
+- Tree-based models;
+- Linear models;
+- Neural Networks.
+
+3. Working assumptions of the metric:
+- The model being explained is a black-box model, meaning that its internal workings are not accessible.
+- The model is deterministic.
+- The features used in the model are independent of each other, which is an assumption that may not always hold true in practice.
+
+
+4. Reference
+This metric was presented on the following paper:
+Lundberg, Scott & Lee, Su-In. (2017). A Unified Approach to Interpreting Model Predictions. 10.48550/arXiv.1705.07874. 
+https://www.researchgate.net/publication/317062430_A_Unified_Approach_to_Interpreting_Model_Predictions
+
+
+5. Dataset available to test the metric:
+My implementation will be tested under the following dataset:
+https://archive.ics.uci.edu/dataset/2/adult (Census Income Dataset)
+A dataset that consists of census data, which can be used to predict whether an individual's income exceeds $50K/yr based on various demographic and employment-related attributes.
+
+6. Reference implementation
+This metric is available as a python library called shap, which it documentation be found here:
+https://shap.readthedocs.io/en/latest/
