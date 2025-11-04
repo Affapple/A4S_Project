@@ -21,6 +21,7 @@ class FeatureType(str, enum.Enum):
     FLOAT = "float"
     CATEGORICAL = "categorical"
     DATE = "date"
+    TEXT = "text"
 
 
 class Feature(BaseModel):
@@ -93,8 +94,17 @@ class Evaluation(BaseModel):
 class ModelFramework(str, enum.Enum):
     ONNX = "onnx"
     TORCH = "torch"
+    GGUF = "gguf"
+    OLLAMA = "ollama"
+
+
+class ModelTask(str, enum.Enum):
+    CLASSIFICATION = "classification"
+    REGRESSION = "regression"
+    TEXT_GEN = "text_generation"
 
 
 class ModelConfig(BaseModel):
     framework: ModelFramework
+    task: ModelTask
     path: str
