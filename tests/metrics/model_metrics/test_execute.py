@@ -110,7 +110,7 @@ def test_data_metric_registry_contains_evaluator_by_batch(
     data_shape: DataShape,
     ref_model: Model,
     test_dataset: Dataset,
-    functional_model: FunctionalModel,
+    functional_model: TabularClassificationModel,
 ):
     measures: list[Measure] = []
     
