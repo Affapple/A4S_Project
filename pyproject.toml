@@ -25,6 +25,9 @@ dependencies = [
     "numpy>=2.3.0",
     "matplotlib>=3.10.7",
     "ollama>=0.6.0",
+    "quantus>=0.6.0",
+    "captum>=0.7.0",
+    "robustbench>=1.1.1",
 ]
 
 [dependency-groups]

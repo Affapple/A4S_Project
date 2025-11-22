@@ -21,7 +21,6 @@ from a4s_eval.data_model.evaluation import (
 from tests.save_measures_utils import save_measures
 from tests.save_plot import draw_plot
 
-
 @pytest.fixture
 def data_shape() -> DataShape:
     metadata = pd.read_csv("tests/data/lcld_v2_metadata_api.csv").to_dict(
@@ -97,11 +96,12 @@ def test_data_metric_registry_contains_evaluator(
     test_dataset: Dataset,
     functional_model: TabularClassificationModel,
 ):
-    measures = evaluator_function[1](
+    metric_name, metric_func = evaluator_function
+    measures = metric_func(
         data_shape, ref_model, test_dataset, functional_model
     )
-    save_measures(evaluator_function[0], measures)
     assert len(measures) > 0
+    save_measures(metric_name, measures)
 
 
 @pytest.mark.parametrize("evaluator_function", model_metric_registry)
@@ -112,6 +112,7 @@ def test_data_metric_registry_contains_evaluator_by_batch(
     test_dataset: Dataset,
     functional_model: TabularClassificationModel,
 ):
+    metric_name, metric_func = evaluator_function
     measures: list[Measure] = []
     
     # This value should be 10_000, however just for testing purposes (since the test dataset only has 100 entries I've used 100)
@@ -122,19 +123,18 @@ def test_data_metric_registry_contains_evaluator_by_batch(
             pid=uuid.uuid4(), shape=test_dataset.shape, data=batch_data
         )
         measures.append(
-            evaluator_function[1](
+            metric_func(
                 data_shape, ref_model, batch_dataset, functional_model
             )[0]
         )
+    assert len(measures) > 0
     
-    save_measures(evaluator_function[0] + "_by_batch", measures)
-
+    save_measures(metric_name + "_by_batch", measures)
     draw_plot(
-        f"{evaluator_function[0]}_by_batch",
+        f"{metric_name}_by_batch",
         x=None,
         y="score",
-        title=f"{evaluator_function[0]} by batch",
+        title=f"{metric_name} by batch",
         x_label=f"Batch index ({BATCH_SIZE} samples)",
-        y_label=evaluator_function[0],
+        y_label=metric_name,
     )
-    assert len(measures) > 0
