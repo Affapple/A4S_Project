@@ -14,10 +14,9 @@ from a4s_eval.service.functional_model import TabularClassificationModel
 def convert_dtype(np_dtype):
     """
     Convert numpy dtype to torch dtype
+    Forces float64 to float32 to avoid issues
     """
-    if np_dtype == np.float32:
-        return torch.float32
-    elif np_dtype == np.float64:
+    if np_dtype == np.float32 or np_dtype == np.float64:
         return torch.float32
     elif np_dtype == np.int32:
         return torch.int32
@@ -47,14 +46,35 @@ def tensorize(function):
     return helper      
 
 
-@model_metric(name="interpretability") # type: ignore
-def interpretability(
+@model_metric(name="Local Lipschitz Estimate") # type: ignore
+def local_lipschitz_estimate(
     datashape: DataShape,
     model: Model,
     dataset: Dataset,
     functional_model: TabularClassificationModel,
-    interpretability_function = None
+    interpretability_function = None,
+    num_examples: int = 5,
+    num_samples: int = 20,
 ) -> list[Measure]:
+    """
+    Analyses the interpretability of a model using Local Lipschitz Estimate metric.\\
+    A lower Local Lipschitz Estimate indicates that the model's explanations are more stable
+    to small perturbations in the input, which is generally desirable for interpretability and robustness
+
+    `num_examples` random examples are sampled from the dataset to compute the metric.\\
+    `num_samples` samples are used to estimate the Lipschitz constant around each example.\\
+    These are hard coded values based on performance considerations.
+
+    :param DataShape datashape: DataShape of the dataset
+    :param Model model: Model to evaluate
+    :param Dataset dataset: Dataset to evaluate on
+    :param TabularClassificationModel functional_model: Functional model wrapper
+    :param Optional[Callable] interpretability_function: Optional interpretability function to use
+    :param Optional[int] num_examples: Number of examples from the dataset to use.
+    :param Optional[int] num_samples: Number of samples to derive around each example.
+
+    :return list[Measure]: List containing the Local Lipschitz Estimate measure on the 5 random examples.
+    """
     # This will always be None, as I believe its out of the scope of the architecture
     # However, as presented in the initial proposition, lime will be used as default
     if interpretability_function is None:
@@ -62,29 +82,22 @@ def interpretability(
             Lime(tensorize(functional_model.predict_proba)).attribute(
                 inputs=kwargs["inputs"], target=kwargs["targets"]
             )
-            # Lime(tensorize(functional_model.predict_proba)).attribute(
-            #     inputs=kwargs["inputs"][0].reshape(1, -1), target=kwargs["targets"][0].reshape(1)
-            # )
-
+        
     explain_func = lambda *args, **kwargs: \
         tensorize(interpretability_function)(*args, **kwargs).detach().cpu().numpy()
 
 
     ## Prepare data
-    if dataset.data is None:
-        raise AssertionError("Dataset data not defined!")
-    if dataset.shape.target is None:
-        raise AssertionError("Dataset target not defined!")
+    assert dataset.data is not None, "Dataset data not defined!"
+    assert datashape.target is not None, "Dataset target not defined!"
 
-    features = [feature.name for feature in dataset.shape.features]
-    target = dataset.shape.target.name
+    features = [feature.name for feature in datashape.features]
+    target = datashape.target.name
     
     # Subsample the dataset for performance (LIME + Lipschitz is expensive)
     # We use a small number of examples to estimate the metric
-    N_EXAMPLES = 5
-    if len(dataset.data) > N_EXAMPLES:
-        # Use random state for reproducibility
-        sampled_data = dataset.data.sample(n=N_EXAMPLES, random_state=42)
+    if len(dataset.data) > num_examples:
+        sampled_data = dataset.data.sample(n=num_examples)
     else:
         sampled_data = dataset.data
 
@@ -93,7 +106,7 @@ def interpretability(
 
     ## Evaluate 
     metric = LocalLipschitzEstimate(
-        nr_samples=5,
+        nr_samples=num_samples,
         normalise=True,
     )
 
@@ -101,12 +114,11 @@ def interpretability(
         model=model.model,
         x_batch=X_batch.to_numpy(),
         y_batch=y_batch.to_numpy(),
-        batch_size=N_EXAMPLES,
+        batch_size=num_examples,
         explain_func=explain_func
     )
-
-    print("Local Lipschitz Estimates:", scores)
+    assert scores is not None and len(scores) != 0, \
+        "Something went wrong, Local Lipschitz Estimate returned no scores"
+    
     current_time = datetime.now()
-
-    mean = sum(scores) / len(scores)
-    return [Measure(name="local_lipschitz_estimate", score=mean, time=current_time)]
+    return [Measure(name="local_lipschitz_estimate", score=score, time=current_time) for score in scores ]
