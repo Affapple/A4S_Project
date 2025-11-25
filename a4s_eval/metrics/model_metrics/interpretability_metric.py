@@ -13,7 +13,7 @@ from a4s_eval.service.functional_model import TabularClassificationModel
 
 def convert_dtype(np_dtype):
     """
-    Convert numpy dtype to torch dtype
+    Convert numpy dtype to torch dtype \\
     Forces float64 to float32 to avoid issues
     """
     if np_dtype == np.float32 or np_dtype == np.float64:
@@ -27,8 +27,9 @@ def convert_dtype(np_dtype):
     
 def tensorize(function):
     """
-    Convert all input and output arrays to tensors
-    Necessary for compatibility with Captum and improves readability
+    Convert all input and output arrays to tensors \\
+    Necessary for compatibility with Captum. \\
+    This was made with multipurpose in mind, so it can be used with any function.
     """
     def helper(*args, **kwargs):
         args = list(args)
@@ -46,13 +47,13 @@ def tensorize(function):
     return helper      
 
 
-@model_metric(name="Local Lipschitz Estimate") # type: ignore
+@model_metric(name="local_lipschitz_estimate") # type: ignore
 def local_lipschitz_estimate(
     datashape: DataShape,
-    model: Model,
+    ref_model: Model,
     dataset: Dataset,
     functional_model: TabularClassificationModel,
-    interpretability_function = None,
+    explanation_function = None,
     num_examples: int = 5,
     num_samples: int = 20,
 ) -> list[Measure]:
@@ -69,7 +70,7 @@ def local_lipschitz_estimate(
     :param Model model: Model to evaluate
     :param Dataset dataset: Dataset to evaluate on
     :param TabularClassificationModel functional_model: Functional model wrapper
-    :param Optional[Callable] interpretability_function: Optional interpretability function to use
+    :param Optional[Callable] interpretability_function: Optional interpretability function to use, default: Lime.attribute
     :param Optional[int] num_examples: Number of examples from the dataset to use.
     :param Optional[int] num_samples: Number of samples to derive around each example.
 
@@ -77,14 +78,14 @@ def local_lipschitz_estimate(
     """
     # This will always be None, as I believe its out of the scope of the architecture
     # However, as presented in the initial proposition, lime will be used as default
-    if interpretability_function is None:
-        interpretability_function = lambda *args, **kwargs: \
+    if explanation_function is None:
+        explanation_function = lambda *args, **kwargs: \
             Lime(tensorize(functional_model.predict_proba)).attribute(
-                inputs=kwargs["inputs"], target=kwargs["targets"]
+                inputs=kwargs["inputs"], target=kwargs["targets"], n_samples=200
             )
         
     explain_func = lambda *args, **kwargs: \
-        tensorize(interpretability_function)(*args, **kwargs).detach().cpu().numpy()
+        tensorize(explanation_function)(*args, **kwargs).detach().cpu().numpy()
 
 
     ## Prepare data
@@ -95,7 +96,6 @@ def local_lipschitz_estimate(
     target = datashape.target.name
     
     # Subsample the dataset for performance (LIME + Lipschitz is expensive)
-    # We use a small number of examples to estimate the metric
     if len(dataset.data) > num_examples:
         sampled_data = dataset.data.sample(n=num_examples)
     else:
@@ -111,7 +111,7 @@ def local_lipschitz_estimate(
     )
 
     scores = metric(
-        model=model.model,
+        model=ref_model.model,
         x_batch=X_batch.to_numpy(),
         y_batch=y_batch.to_numpy(),
         batch_size=num_examples,
