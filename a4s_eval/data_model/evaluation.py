@@ -2,6 +2,7 @@ import enum
 import uuid
 from typing import Any
 
+import numpy as np
 import pandas as pd
 from onnxruntime.capi.onnxruntime_inference_collection import InferenceSession
 from pydantic import BaseModel, ConfigDict, field_serializer
@@ -63,7 +64,7 @@ class DataShape(BaseModel):
 class Dataset(BaseModel):
     pid: uuid.UUID
     shape: DataShape
-    data: pd.DataFrame | None = None
+    data: pd.DataFrame | dict[str, np.ndarray] | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

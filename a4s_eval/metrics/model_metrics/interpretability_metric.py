@@ -92,17 +92,23 @@ def local_lipschitz_estimate(
     assert dataset.data is not None, "Dataset data not defined!"
     assert datashape.target is not None, "Dataset target not defined!"
 
-    features = [feature.name for feature in datashape.features]
-    target = datashape.target.name
+
+    features_names = [feature.name for feature in datashape.features]
+    target_name = datashape.target.name
+
+    features = np.column_stack([dataset.data[feature] for feature in features_names])
+    targets = np.array(dataset.data[target_name])
+
+    num_existing_examples = features.shape[0]
     
     # Subsample the dataset for performance (LIME + Lipschitz is expensive)
-    if len(dataset.data) > num_examples:
-        sampled_data = dataset.data.sample(n=num_examples)
+    if num_examples < num_existing_examples:
+        sampled_data_idxs = random.sample(range(num_existing_examples), num_examples)
     else:
-        sampled_data = dataset.data
+        sampled_data_idxs = range(num_existing_examples)
 
-    X_batch = sampled_data[features]
-    y_batch = sampled_data[target]
+    X_batch = features[sampled_data_idxs]
+    y_batch = targets[sampled_data_idxs]
 
     ## Evaluate 
     metric = LocalLipschitzEstimate(
@@ -112,9 +118,9 @@ def local_lipschitz_estimate(
 
     scores = metric(
         model=ref_model.model,
-        x_batch=X_batch.to_numpy(),
-        y_batch=y_batch.to_numpy(),
-        batch_size=num_examples,
+        x_batch=X_batch,
+        y_batch=y_batch,
+        batch_size=num_existing_examples,
         explain_func=explain_func
     )
     assert scores is not None and len(scores) != 0, \
