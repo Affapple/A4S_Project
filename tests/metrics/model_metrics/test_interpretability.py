@@ -1,13 +1,13 @@
-from datetime import datetime
 from typing import Literal
 import uuid
 import numpy as np
-
+from captum.attr import Lime, Saliency
 from torchvision import datasets, transforms
 import pandas as pd
 import pytest
 
 from a4s_eval.metric_registries.model_metric_registry import model_metric_registry
+from a4s_eval.metrics.model_metrics.interpretability_metric import tensorize
 from a4s_eval.service.functional_model import TabularClassificationModel
 from a4s_eval.service.model_factory import load_model
 
@@ -167,8 +167,18 @@ def test_data_metric_registry_contains_evaluator(
         data_shape, ref_model, dataset_df, functional_model
     )
     assert len(measures) > 0
-    
-    date = datetime.now()
-    date = f"{date.day}-{date.hour}-{date.minute}"
-    measure_name = f"{metric_name}-{current_dataset}-SALIENCY-{date}"
-    save_measures(measure_name, measures)
+
+    expl_funs = {
+        "lime": lambda *args, **kwargs: \
+            Lime(tensorize(functional_model.predict_proba)).attribute(
+                inputs=kwargs["inputs"], target=kwargs["targets"], n_samples=200
+            ),
+        "saliency": lambda *args, **kwargs:
+            Saliency(tensorize(functional_model.predict_proba_grad)).attribute(
+                inputs=kwargs["inputs"], target=kwargs["targets"]
+            )
+    }
+
+    for fun_name, fun in expl_funs.items():
+        measure_name = f"{metric_name}-{current_dataset}-{fun_name}"
+        save_measures(measure_name, measures)
