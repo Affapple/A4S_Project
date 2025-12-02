@@ -2,14 +2,12 @@ from datetime import datetime
 from typing import Literal
 import uuid
 import numpy as np
-import torch
+
 from torchvision import datasets, transforms
 import pandas as pd
 import pytest
 
-from a4s_eval.data_model.measure import Measure
 from a4s_eval.metric_registries.model_metric_registry import model_metric_registry
-from a4s_eval.metric_registries.model_metric_registry import ModelMetric
 from a4s_eval.service.functional_model import TabularClassificationModel
 from a4s_eval.service.model_factory import load_model
 
@@ -25,7 +23,6 @@ from a4s_eval.data_model.evaluation import (
 )
 
 from tests.save_measures_utils import save_measures
-from tests.save_plot import draw_plot
 
 MODEL_PATH = "mnist_cnn.pt"
 

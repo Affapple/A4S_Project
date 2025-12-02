@@ -7,6 +7,12 @@ resolution-markers = [
     "(platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')",
 ]
 
+[manifest]
+members = [
+    "a4s-eval",
+    "a4s-metric-tests",
+]
+
 [[package]]
 name = "a4s-eval"
 version = "0.1.0"
@@ -96,6 +102,34 @@ test = [
     { name = "pytest", specifier = ">=8.3.3,<9" },
     { name = "pytest-cov", specifier = ">=6.0.0,<7" },
     { name = "pytest-mock", specifier = ">=3.12.0,<4" },
+]
+
+[[package]]
+name = "a4s-metric-tests"
+version = "0.1.0"
+source = { virtual = "A4S_metric_tests" }
+dependencies = [
+    { name = "adversarial-robustness-toolbox" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "adversarial-robustness-toolbox", specifier = ">=1.20.1" }]
+
+[[package]]
+name = "adversarial-robustness-toolbox"
+version = "1.20.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "setuptools" },
+    { name = "six" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fb/a2/6eb94da010d08f05d03cdfbc53c92b15f56b943cca93893715f56dace5fa/adversarial_robustness_toolbox-1.20.1.tar.gz", hash = "sha256:5bfd751a1b1a1a2a669d961f7df0de7a9e3d95e5695e7a75ee6748cd5a339203", size = 2909075, upload-time = "2025-07-07T19:53:18.037Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f8/07/29795237eb3b0aeeed172ab72457015578b228ca8913bbc6b7cedfb51d28/adversarial_robustness_toolbox-1.20.1-py3-none-any.whl", hash = "sha256:03b15b35d2a1a564a436b023ad90968d64542e3ff191c668bffb8207f38683f5", size = 1109371, upload-time = "2025-07-07T19:53:16.023Z" },
 ]
 
 [[package]]
