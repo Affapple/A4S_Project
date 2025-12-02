@@ -1,6 +1,6 @@
 from datetime import datetime
 import random
-from captum.attr import Lime
+from captum.attr import Lime, Saliency
 import numpy as np
 from quantus import LocalLipschitzEstimate
 import torch
@@ -54,8 +54,8 @@ def local_lipschitz_estimate(
     dataset: Dataset,
     functional_model: TabularClassificationModel,
     explanation_function = None,
-    num_examples: int = 5,
-    num_samples: int = 20,
+    num_examples: int = 10,
+    num_samples: int = 50,
 ) -> list[Measure]:
     """
     Analyses the interpretability of a model using Local Lipschitz Estimate metric.\\
@@ -83,6 +83,10 @@ def local_lipschitz_estimate(
             Lime(tensorize(functional_model.predict_proba)).attribute(
                 inputs=kwargs["inputs"], target=kwargs["targets"], n_samples=200
             )
+            # Due to project restrictions, currently the method has to be hard coded here
+            # Saliency(tensorize(functional_model.predict_proba_grad)).attribute(
+            #     inputs=kwargs["inputs"], target=kwargs["targets"]
+            # )
         
     explain_func = lambda *args, **kwargs: \
         tensorize(explanation_function)(*args, **kwargs).detach().cpu().numpy()

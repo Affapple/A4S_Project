@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Literal
 import uuid
 import numpy as np
@@ -116,6 +117,11 @@ def testing_examples(data_shape: DataShape) -> dict[str, Dataset]:
         "labels": metric_testing_dataset["adv_examples"]["y"]
     }
 
+    pd_original_adv_examples = {
+        "images": metric_testing_dataset["original_adv_example"]["x"],
+        "labels": metric_testing_dataset["original_adv_example"]["y"]
+    }
+
     pd_well_classified = {
         "images": metric_testing_dataset["well_classified"]["x"],
         "labels": metric_testing_dataset["well_classified"]["y"]
@@ -131,6 +137,11 @@ def testing_examples(data_shape: DataShape) -> dict[str, Dataset]:
             shape=data_shape,
             data=pd_adv_examples
         ),
+        "original_adv_examples": Dataset(
+            pid=uuid.uuid4(),
+            shape=data_shape,
+            data=pd_original_adv_examples
+        ),
         "well_classified": Dataset(
             pid=uuid.uuid4(),
             shape=data_shape,
@@ -143,10 +154,9 @@ def testing_examples(data_shape: DataShape) -> dict[str, Dataset]:
         )
     }
 
-
-@pytest.mark.parametrize("current_dataset", ["adv_examples", "well_classified", "wrongly_classified"])
+@pytest.mark.parametrize("current_dataset", ["adv_examples", "original_adv_examples", "well_classified", "wrongly_classified"])
 def test_data_metric_registry_contains_evaluator(
-    current_dataset: Literal["adv_examples", "well_classified", "wrongly_classified"],
+    current_dataset: Literal["adv_examples", "original_adv_examples" "well_classified", "wrongly_classified"],
     testing_examples: dict[str, Dataset],
     data_shape: DataShape,
     ref_model: Model,
@@ -156,12 +166,12 @@ def test_data_metric_registry_contains_evaluator(
     metric_name = "local_lipschitz_estimate"
     metric_func = model_metric_registry.get_functions()[metric_name]
 
-
-    print(current_dataset)
     measures = metric_func(
         data_shape, ref_model, dataset_df, functional_model
     )
     assert len(measures) > 0
-
-    measure_name = f"{metric_name}-{current_dataset}"
+    
+    date = datetime.now()
+    date = f"{date.day}-{date.hour}-{date.minute}"
+    measure_name = f"{metric_name}-{current_dataset}-SALIENCY-{date}"
     save_measures(measure_name, measures)
