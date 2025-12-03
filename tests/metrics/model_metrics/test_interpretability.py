@@ -3,12 +3,14 @@ import uuid
 import numpy as np
 from captum.attr import Lime, Saliency
 from torchvision import datasets, transforms
+import torchvision.models as models
+import torch
 import pandas as pd
 import pytest
 
 from a4s_eval.metric_registries.model_metric_registry import model_metric_registry
 from a4s_eval.metrics.model_metrics.interpretability_metric import tensorize
-from a4s_eval.service.functional_model import TabularClassificationModel
+from a4s_eval.service.functional_model import PredictClassFn, TabularClassificationModel
 from a4s_eval.service.model_factory import load_model
 
 from a4s_eval.data_model.evaluation import (
@@ -24,7 +26,7 @@ from a4s_eval.data_model.evaluation import (
 
 from tests.save_measures_utils import save_measures
 
-MODEL_PATH = "mnist_cnn.pt"
+MNIST_MODEL_PATH = "mnist_cnn.pt"
 
 def _get_mnist_dataset(train: bool = True) -> pd.DataFrame:
     transform = transforms.Compose([
@@ -68,7 +70,7 @@ def data_shape() -> DataShape:
 
 
 @pytest.fixture
-def ref_dataset(train_dataset: pd.DataFrame, data_shape: DataShape) -> Dataset:
+def mnist_train_dataset(train_dataset: pd.DataFrame, data_shape: DataShape) -> Dataset:
     data = train_dataset
     return Dataset(
         pid=uuid.uuid4(),
@@ -78,18 +80,18 @@ def ref_dataset(train_dataset: pd.DataFrame, data_shape: DataShape) -> Dataset:
 
 
 @pytest.fixture
-def ref_model(ref_dataset: Dataset) -> Model:
+def mnist_ref_model(mnist_train_dataset: Dataset) -> Model:
     return Model(
         pid=uuid.uuid4(),
         model=None,
-        dataset=ref_dataset,
+        dataset=mnist_train_dataset,
     )
 
 
 @pytest.fixture
-def functional_model() -> TabularClassificationModel:
+def mnist_functional_model() -> TabularClassificationModel:
     model_config = ModelConfig(
-        path=f"./tests/data/{MODEL_PATH}",
+        path=f"./tests/data/{MNIST_MODEL_PATH}",
         framework=ModelFramework.TORCH,
         task=ModelTask.CLASSIFICATION,
     )
@@ -104,7 +106,7 @@ def test_interpretability_metric_is_present():
     assert model_metric_registry._functions.get("local_lipschitz_estimate") is not None
 
 @pytest.fixture
-def testing_examples(data_shape: DataShape) -> dict[str, Dataset]:
+def mnist_testing_examples(data_shape: DataShape) -> dict[str, Dataset]:
     # load previously created datasets
     import pickle
     metric_testing_dataset: dict[str, dict[str, np.ndarray]] = pickle.load(open("./tests/data/metric_testing_dataset.pkl", "rb"))
@@ -152,33 +154,124 @@ def testing_examples(data_shape: DataShape) -> dict[str, Dataset]:
     }
 
 @pytest.mark.parametrize("current_dataset", ["adv_examples", "original_adv_examples", "well_classified", "wrongly_classified"])
-def test_data_metric_registry_contains_evaluator(
+def test_explainability_over_MNIST(
     current_dataset: Literal["adv_examples", "original_adv_examples" "well_classified", "wrongly_classified"],
-    testing_examples: dict[str, Dataset],
+    mnist_testing_examples: dict[str, Dataset],
     data_shape: DataShape,
-    ref_model: Model,
-    functional_model: TabularClassificationModel,
+    mnist_ref_model: Model,
+    mnist_functional_model: TabularClassificationModel,
 ):
-    dataset_df = testing_examples[current_dataset]
+    dataset_df = mnist_testing_examples[current_dataset]
     metric_name = "local_lipschitz_estimate"
     metric_func = model_metric_registry.get_functions()[metric_name]
 
-    measures = metric_func(
-        data_shape, ref_model, dataset_df, functional_model
-    )
-    assert len(measures) > 0
 
     expl_funs = {
         "lime": lambda *args, **kwargs: \
-            Lime(tensorize(functional_model.predict_proba)).attribute(
+            Lime(tensorize(mnist_functional_model.predict_proba)).attribute(
                 inputs=kwargs["inputs"], target=kwargs["targets"], n_samples=200
             ),
         "saliency": lambda *args, **kwargs:
-            Saliency(tensorize(functional_model.predict_proba_grad)).attribute(
+            Saliency(tensorize(mnist_functional_model.predict_proba_grad)).attribute(
                 inputs=kwargs["inputs"], target=kwargs["targets"]
             )
     }
 
     for fun_name, fun in expl_funs.items():
+        measures = metric_func(
+            data_shape, mnist_ref_model, dataset_df, mnist_functional_model, explanation_function = fun
+        )
+        assert len(measures) > 0
+
         measure_name = f"{metric_name}-{current_dataset}-{fun_name}"
+        save_measures(measure_name, measures)
+
+@pytest.fixture
+def resnet_ref_model(data_shape: DataShape) -> Model:
+    return Model(
+        pid=uuid.uuid4(),
+        model=None,
+        dataset=Dataset(
+            pid=uuid.uuid4(),
+            shape=data_shape,
+            data=None,
+        ),
+    )
+
+
+@pytest.fixture
+def resnet_functional_model() -> TabularClassificationModel:
+    # This was done here and not in the load model 
+    # because I am not loading the model, just using a pretrained one.
+    weights = models.ResNet50_Weights.IMAGENET1K_V1
+    model = models.resnet50(weights=weights)
+    model.eval()
+
+    from a4s_eval.typing import Array
+    def predict_proba(x: Array) -> Array:
+        if isinstance(x, np.ndarray):
+            x = torch.tensor(x, dtype=torch.float32)
+        with torch.no_grad():
+            y_pred = model(x)
+        return y_pred.detach().cpu().numpy()
+    
+    def predict_class(x: Array) -> Array:
+        if isinstance(x, np.ndarray):
+            x = torch.tensor(x, dtype=torch.float32)
+        x = x.requires_grad_()
+        y_pred = model(x)
+        return y_pred
+
+    def predict_proba_grad(x: Array) -> Array:
+        if isinstance(x, np.ndarray):
+            x = torch.tensor(x, dtype=torch.float32)
+        x = x.requires_grad_()
+        y_pred = model(x)
+        return y_pred
+
+    return TabularClassificationModel(
+        predict_class=predict_class,
+        predict_proba=predict_proba,
+        predict_proba_grad=predict_proba_grad
+    )
+
+@pytest.fixture
+def resnet_testing_examples(data_shape: DataShape) -> dict[str, Dataset]:
+    pass
+
+
+@pytest.mark.parametrize("current_dataset", ["adv_examples", "original_adv_examples", "well_classified", "wrongly_classified"])
+def test_explainability_over_ResNet(
+    current_dataset: Literal["adv_examples", "original_adv_examples" "well_classified", "wrongly_classified"],
+    resnet_testing_examples: dict[str, Dataset],
+    data_shape: DataShape,
+    resnet_ref_model: Model,
+    resnet_functional_model: TabularClassificationModel,
+):
+    metric_name = "local_lipschitz_estimate"
+    metric_func = model_metric_registry.get_functions()[metric_name]
+
+    preprocess = models.ResNet50_Weights.IMAGENET1K_V1.transforms
+    img_transformed = preprocess(img)
+
+    dataset_df = resnet_testing_examples[current_dataset]
+
+
+    expl_funs = {
+        "lime": lambda *args, **kwargs: \
+            Lime(tensorize(resnet_functional_model.predict_proba)).attribute(
+                inputs=kwargs["inputs"], target=kwargs["targets"], n_samples=200
+            ),
+        "saliency": lambda *args, **kwargs:
+            Saliency(tensorize(resnet_functional_model.predict_proba_grad)).attribute(
+                inputs=kwargs["inputs"], target=kwargs["targets"]
+            )
+    }
+
+    for fun_name, fun in expl_funs.items():
+        measures = metric_func(
+            data_shape, resnet_ref_model, dataset_df, resnet_functional_model, explanation_function = fun
+        )
+        assert len(measures) > 0
+        measure_name = f"resnet_{metric_name}-{current_dataset}-{fun_name}"
         save_measures(measure_name, measures)

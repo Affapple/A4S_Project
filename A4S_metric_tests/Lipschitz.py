@@ -12,7 +12,6 @@ def measure(
     labels
 ):
     model.eval()
-    # Create the Saliency explainer once for efficiency.
     # explainer = Saliency(model)
     explainer = Lime(model) # To get log_softmax
 
