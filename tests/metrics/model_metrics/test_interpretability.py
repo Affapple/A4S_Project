@@ -203,7 +203,7 @@ def resnet_ref_model(data_shape: DataShape) -> Model:
 def resnet_functional_model() -> TabularClassificationModel:
     # This was done here and not in the load model 
     # because I am not loading the model, just using a pretrained one.
-    weights = models.ResNet50_Weights.IMAGENET1K_V1
+    weights = models.ResNet50_Weights.IMAGENET1K_V2
     model = models.resnet50(weights=weights)
     model.eval()
 
@@ -237,8 +237,51 @@ def resnet_functional_model() -> TabularClassificationModel:
 
 @pytest.fixture
 def resnet_testing_examples(data_shape: DataShape) -> dict[str, Dataset]:
-    pass
+    # load previously created datasets
+    import pickle
+    metric_testing_dataset: dict[str, dict[str, np.ndarray]] = pickle.load(open("./tests/data/resnet_metric_testing_dataset.pkl", "rb"))
 
+    pd_adv_examples = {
+        "images": metric_testing_dataset["adv_examples"]["x"],
+        "labels": metric_testing_dataset["adv_examples"]["y"]
+    }
+
+    pd_original_adv_examples = {
+        "images": metric_testing_dataset["original_adv_example"]["x"],
+        "labels": metric_testing_dataset["original_adv_example"]["y"]
+    }
+
+    pd_well_classified = {
+        "images": metric_testing_dataset["well_classified"]["x"],
+        "labels": metric_testing_dataset["well_classified"]["y"]
+    }
+    pd_wrongly_classified = {
+        "images": metric_testing_dataset["wrongly_classified"]["x"],
+        "labels": metric_testing_dataset["wrongly_classified"]["y"]
+    }
+
+    return {
+        "adv_examples": Dataset(
+            pid=uuid.uuid4(),
+            shape=data_shape,
+            data=pd_adv_examples
+        ),
+        "original_adv_examples": Dataset(
+            pid=uuid.uuid4(),
+            shape=data_shape,
+            data=pd_original_adv_examples
+        ),
+        "well_classified": Dataset(
+            pid=uuid.uuid4(),
+            shape=data_shape,
+            data=pd_well_classified
+        ),
+        "wrongly_classified": Dataset(
+            pid=uuid.uuid4(),
+            shape=data_shape,
+            data=pd_wrongly_classified
+        )
+    }
 
 @pytest.mark.parametrize("current_dataset", ["adv_examples", "original_adv_examples", "well_classified", "wrongly_classified"])
 def test_explainability_over_ResNet(
@@ -251,11 +294,7 @@ def test_explainability_over_ResNet(
     metric_name = "local_lipschitz_estimate"
     metric_func = model_metric_registry.get_functions()[metric_name]
 
-    preprocess = models.ResNet50_Weights.IMAGENET1K_V1.transforms
-    img_transformed = preprocess(img)
-
     dataset_df = resnet_testing_examples[current_dataset]
-
 
     expl_funs = {
         "lime": lambda *args, **kwargs: \
