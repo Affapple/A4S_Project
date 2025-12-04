@@ -113,7 +113,7 @@ def test_data_metric_registry_contains_evaluator_by_batch(
     functional_model: TabularClassificationModel,
 ):
     metric_name, metric_func = evaluator_function
-    if metric_name == "interpretability":
+    if metric_name == "local_lipschitz_estimate":
         return 
     measures: list[Measure] = []
     

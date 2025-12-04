@@ -4,7 +4,7 @@ import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
-class Model(nn.Module):
+class MNIST_Model(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv1 = nn.Conv2d(1, 32, 3, 1)
@@ -28,12 +28,12 @@ class Model(nn.Module):
         x = self.fc2(x)
         return x  # Return logits, not probabilities
     
-def load_cnn_model(path="mnist_cnn.pt") -> Model | None:
+def load_cnn_model(path="mnist_cnn.pt") -> MNIST_Model | None:
     """
     Loads a model, however it loads the entire model, not just the weights.
     This is because we need the architecture to be saved as well in the a4s project.
     """
-    model: Model
+    model: MNIST_Model
     try:
         model = torch.jit.load(path)
     except Exception as e:
@@ -65,3 +65,47 @@ def get_mnist_dataset():
     train_dataset = datasets.MNIST(root='./data', train=True, download=True, transform=transform)
     test_dataset = datasets.MNIST(root='./data', train=False, download=True, transform=transform)
     return train_dataset, test_dataset
+
+
+class IncomeModel(nn.Module):
+    def __init__(self, input_size):
+        super().__init__()
+        self.fc1 = nn.Linear(input_size, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 32)
+        self.fc4 = nn.Linear(32, 32)
+        self.fc5 = nn.Linear(32, 32)
+        self.fc6 = nn.Linear(32, 2)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(0.3)
+    
+    def forward(self, x):
+        x = self.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.relu(self.fc2(x))
+        x = self.dropout(x)
+        x = self.relu(self.fc3(x))
+        x = self.dropout(x)
+        x = self.relu(self.fc4(x))
+        x = self.dropout(x)
+        x = self.relu(self.fc5(x))
+        x = self.dropout(x)
+        x = self.fc6(x)
+        return x
+    
+import torch.utils.data as data
+
+class AdultDataset(data.Dataset):
+
+    def __init__(self, X, y):
+        self.X = X
+        self.y = y
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, index):
+        sample_train = self.X[index]
+        sample_label = self.y[index]
+
+        return sample_train, sample_label
