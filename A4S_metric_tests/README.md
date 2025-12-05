@@ -11,7 +11,7 @@ Now you should be able to run the notebooks.
 # Testing forlder organization
 This testing folder is divided into tree important files:
 - `train.ipynb`: Meant to train a CNN model to predict the written number using MNIST handwritten images as a dataset
-- `test_dataset.ipynb`: Meant to get examples to test the metric I implemented in A4S by:
+- `test_dataset.ipynb`: Meant to get examples to test the metric I implemented in A4S for both MNIST and Income models:
   - ***Original (Adv)***: Getting 10 well classified images and saving them
   - ***Adversarial***: Attacking the model to generate 10 adversarial examples beginning with the previously mentioned examples
   - ***Well Classified***: Getting other 10 well classified images
