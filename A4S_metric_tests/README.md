@@ -22,8 +22,10 @@ Both `Lipschitz.py` and `model.py` are auxiliary files where I defined the metri
 
 # How to run
 
-Firstly you have to get the trained model and its datasets, refer to `train.ipynb` and `test_dataset.ipynb` and copy the generated files to the mentioned directory.\
+Firstly you have to get the trained model and its datasets, refer to `train.ipynb` and `test_dataset.ipynb`.\
 Then you have to run the script to run the tests of the project, run `./tests/run_metrics_test.sh`.\
+  - **Note**: This script automatically copies the files mentioned there into their correct placement, if necessary. No copy is needed if using this script.
+
 If it fails for lack of permissions, add the permission to execute to the file: `chmod +x ./tests/run_metrics_test.sh`.
   - **Note**: the tests will return warnings when running them, I believe they can be safely ignored, however I chose to not supress them in case they aren't.
 
